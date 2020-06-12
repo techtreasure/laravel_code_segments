@@ -1,0 +1,228 @@
+
+
+///////////////////////////////////////////////////////
+Controllers
+///////////////////////////////////////////////////////
+
+/****** HomeController.php
+
+class HomeController extends Controller
+{
+    public function index()
+    {
+        return view('dashboard');
+    }
+
+    public function adminHome()
+    {
+        return view('admin.adminHome');
+    }
+
+    public function superadminHome()
+    {
+        return view('superadmin.superadminHome');
+    }
+}
+
+
+
+/****** LoginController.php
+
+class LoginController extends Controller
+{
+
+public function login(Request $request)
+    {   
+        $input = $request->all();
+   
+        $this->validate($request, [
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+   
+        if(auth()->attempt(array('email' => $input['email'], 'password' => $input['password'])))
+        {
+            if (auth()->user()->userType == 'admin') {
+               return redirect()->route('admin.home');
+            }
+            else if(auth()->user()->userType == 'superadmin') {
+                return redirect()->route('superadmin.home');
+            }
+            else{
+                return redirect()->route('home');
+            }
+        }else{
+            return redirect()->route('login')
+                ->with('error','Email-Address And Password Are Wrong.');
+        }     
+    }
+}
+
+
+///////////////////////////////////////////////////////
+Middleware
+///////////////////////////////////////////////////////
+
+class IsAdmin
+{
+    public function handle($request, Closure $next)
+    {
+
+        if(auth()->user()->userType == 'admin'){
+            return $next($request);
+        }
+        else if(auth()->user()->userType == 'superadmin'){
+            return redirect('superadmin/home')->with('status',"You don't have super admin access.");
+        }
+        
+        return redirect('home')->with('status',"You don't have access.");
+    }
+}
+
+
+
+
+class IsSuperAdmin
+{
+
+    public function handle($request, Closure $next)
+    {
+        if(auth()->user()->userType == 'superadmin'){
+            
+            return $next($request);
+        }
+        else if(auth()->user()->userType == 'admin'){
+            return redirect('admin/home')->with('status',"You don't have super admin access.");
+        }
+        
+        return redirect('home')->with('status',"You don't have access.");
+    }
+}
+
+
+/************************ Kernal.php
+protected $routeMiddleware = [
+
+
+  'is_admin' => \App\Http\Middleware\IsAdmin::class,
+  'is_superadmin' => \App\Http\Middleware\IsSuperAdmin::class,
+  ]
+
+
+
+///////////////////////////////////////////////////////
+database
+///////////////////////////////////////////////////////
+
+
+class CreateUsersTable extends Migration
+{
+
+    public function up()
+    {
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->string('first_name');
+            $table->string('last_name');
+            $table->string('pf_number');
+            $table->string('email')->unique();
+            $table->string('phone');
+            $table->string('job_title');
+            $table->string('department');
+            $table->string('userType')->default("user");  /*** admin, supperadmin, user ***/
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('password');
+            $table->string('picture')->default("default");
+            $table->string('approved')->default("0");
+            $table->rememberToken();
+            $table->timestamps();
+        });
+    }
+    
+    
+    
+    
+    
+/************************** CreateUsersSeeder.php
+
+    public function run()
+    {
+
+        $user = [
+            [
+               'first_name'=>'Admin',
+               'last_name'=>'Admin',
+               'pf_number'=>'1',
+               'phone'=>'1',
+               'job_title'=>'1',
+                'department'=>'1',
+               'email'=>'admin@a.com',
+               'picture'=>'Admin',
+                'userType'=>'admin',
+               'password'=> bcrypt('1'),
+            ],
+            [
+                'first_name'=>'User',
+                'last_name'=>'User',
+                'pf_number'=>'1',
+                'phone'=>'1',
+                'job_title'=>'1',
+                'department'=>'1',
+                'picture'=>'User',
+               'email'=>'user@u.com',
+                'userType'=>'user',
+               'password'=> bcrypt('1'),
+            ],
+            [
+                'first_name'=>'SuperAdmin',
+               'last_name'=>'SuperAdmin',
+               'pf_number'=>'1',
+               'phone'=>'1',
+               'job_title'=>'1',
+                'department'=>'1',
+                'email'=>'super@s.com',
+                 'userType'=>'superadmin',
+                'password'=> bcrypt('1'),
+             ],
+        ];
+    
+    
+    
+    
+    
+
+///////////////////////////////////////////////////////
+Resources
+///////////////////////////////////////////////////////
+
+View
+  | __ admin
+         |_ adminhome.blade.php
+  | __ superadmin
+         |_ superadminhome.blade.php
+  | __ user
+         |_ userhome.blade.php
+         
+  | __ home.blade.php
+  
+
+
+///////////////////////////////////////////////////////
+Routings
+______________________________________________________
+web.php
+///////////////////////////////////////////////////////
+
+Auth::routes();
+
+Route::group(['middleware' => ['auth', 'is_admin']], function(){
+    Route::get('admin/home', 'HomeController@adminHome')->name('admin.home');
+});
+
+Route::group(['middleware' => ['auth', 'is_superadmin']], function(){
+    Route::get('superadmin/home', 'HomeController@superadminHome')->name('superadmin.home');
+});
+
+Route::group(['middleware' => ['auth', 'is_user']], function(){
+    Route::get('user/home', 'HomeController@userHome')->name('user.home');
+});
